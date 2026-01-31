@@ -133,11 +133,13 @@ docker-compose up -d
 
 ## How It Works
 
-1. **Scans FileBrowser** - Makes API calls to get all files and their modification times
-2. **Tracks Changes** - SQLite database stores file metadata and modification history
-3. **Detects Updates** - Every 30 mins, compares current files with previous state
-4. **Smart Batching** - Groups all changes into a single Discord message
-5. **Formats Nicely** - Shows file paths, sizes, and change types with emojis:
+1. **Initial Run** - On first execution, scans all existing files and stores them in the database WITHOUT sending notifications
+2. **Subsequent Runs** - Compares current state with database and only notifies about:
+   - Files uploaded AFTER the initial run
+   - Files modified since last check
+   - Files deleted since last check
+3. **Smart Batching** - Groups all changes into a single Discord message per interval
+4. **Formats Nicely** - Shows file paths, sizes, and change types with emojis:
    - 📦 New Files (green)
    - ✏️ Modified Files (yellow)
    - 🗑️ Files Deleted (red)
@@ -187,15 +189,27 @@ This will reset the database. The next run may show all files as "new" since the
 
 ## Advanced Features
 
-### Skip First Run Notifications
+### First Run Behavior
 
-To avoid getting notified about all existing files on first run:
+**The script automatically handles the first run intelligently:**
 
+On the very first execution:
+- Scans all existing files in FileBrowser
+- Stores them in the database as "already seen"
+- **Does NOT send notifications** (avoids spam about existing files)
+- Logs: "First run detected - populating database without sending notifications"
+
+On subsequent runs:
+- Only notifies about files uploaded AFTER the initial run
+- Tracks modifications and deletions of monitored files
+
+**To reset tracking (start fresh):**
 ```bash
+rm file_tracker.db
 python monitor.py --once
 ```
 
-Then start the continuous monitoring the next time.
+This treats all current files as "already seen" again.
 
 ### Custom Ignore Patterns
 

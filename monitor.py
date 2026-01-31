@@ -416,17 +416,37 @@ class FileMonitor:
         # Get previously tracked files
         previous_dict = self.db.get_all_files()
         
-        # Detect changes
-        changes = defaultdict(list)
-        detection_time = current_time - (30 * 60)  # 30 minutes ago (for first run, use full 30 mins)
+        # Check if this is the first run (database is empty or doesn't have this marker)
+        is_first_run = len(previous_dict) == 0
         
+        if is_first_run:
+            logger.info("First run detected - populating database without sending notifications")
+            logger.info("Future runs will only notify about NEW files uploaded after this point")
+            # Populate database with all current files
+            for file_record in current_files:
+                self.db.update_or_insert_file(file_record, current_time)
+            self.last_run = current_time
+            logger.info(f"Initial setup complete. Tracked {len(current_files)} existing files")
+            logger.info("Monitoring cycle completed")
+            return
+        
+        # Not first run - proceed with normal change detection
+        changes = defaultdict(list)
+        
+        # Only check for files added since the last run
+        # Use last_run if available, otherwise use a reasonable window
         if self.last_run:
             detection_time = self.last_run
+        else:
+            # If last_run is not set but DB has files, use current time as baseline
+            # This prevents re-notifying about old files on script restart
+            detection_time = current_time
+            logger.info("Script restarted - will only detect changes from this point forward")
         
         # Check for new and modified files
         for file_path, current_file in current_dict.items():
             if file_path not in previous_dict:
-                # New file
+                # New file - only notify if it was added after detection_time
                 if current_file.mod_time >= detection_time:
                     changes["new"].append({
                         "path": file_path,
@@ -445,15 +465,18 @@ class FileMonitor:
                     })
                     logger.info(f"Modified file detected: {file_path}")
         
-        # Check for deleted files
+        # Check for deleted files (only if not first run)
         for file_path, previous_file in previous_dict.items():
             if file_path not in current_dict and not previous_file.is_dir:
-                changes["deleted"].append({
-                    "path": file_path,
-                    "size": previous_file.size,
-                    "name": previous_file.name
-                })
-                logger.info(f"Deleted file detected: {file_path}")
+                # Only report deletions if the file was checked relatively recently
+                # This prevents reporting deletions of files that disappeared before we started
+                if self.last_run and (current_time - previous_file.mod_time) < (self.last_run + 3600):
+                    changes["deleted"].append({
+                        "path": file_path,
+                        "size": previous_file.size,
+                        "name": previous_file.name
+                    })
+                    logger.info(f"Deleted file detected: {file_path}")
         
         # Update database with current files
         for file_record in current_files:
