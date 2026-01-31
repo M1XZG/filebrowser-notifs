@@ -294,11 +294,7 @@ class DiscordNotifier:
             "footer": {
                 "text": f"Total: {len(files)} file(s) | {self._format_size(total_size)}"
             },
-            "timestamp": datetime.utcnow().isoformat()color": colors.get(change_type, 0x808080),
-            "footer": {
-                "text": f"Total: {len(files)} file(s) | {self._format_size(total_size)}",
-                "timestamp": datetime.utcnow().isoformat()
-            }
+            "timestamp": datetime.utcnow().isoformat()
         }
         
         return embed
@@ -310,7 +306,20 @@ class DiscordNotifier:
             if size < 1024:
                 return f"{size:.1f} {unit}"
             size /= 1024
-        return f"{size:.1f} TB" with retry logic"""
+        return f"{size:.1f} TB"
+    
+    @staticmethod
+    def _chunk_files(files: List[Dict], chunk_size: int) -> List[List[Dict]]:
+        """Split files into chunks"""
+        return [files[i:i + chunk_size] for i in range(0, len(files), chunk_size)]
+    
+    @staticmethod
+    def _chunk_embeds(embeds: List[Dict], chunk_size: int) -> List[List[Dict]]:
+        """Split embeds into chunks"""
+        return [embeds[i:i + chunk_size] for i in range(0, len(embeds), chunk_size)]
+    
+    def _send_webhook(self, data: Dict):
+        """Send data to Discord webhook with retry logic"""
         max_retries = 3
         retry_delay = 2
         
