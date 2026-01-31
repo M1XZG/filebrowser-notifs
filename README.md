@@ -135,14 +135,46 @@ docker-compose up -d
 
 1. **Initial Run** - On first execution, scans all existing files and stores them in the database WITHOUT sending notifications
 2. **Subsequent Runs** - Compares current state with database and only notifies about:
-   - Files uploaded AFTER the initial run
-   - Files modified since last check
-   - Files deleted since last check
+   - Files uploaded AFTER the initial run (always tracked)
+   - Files modified since last check (optional, disabled by default)
+   - Files deleted since last check (optional, enabled by default)
 3. **Smart Batching** - Groups all changes into a single Discord message per interval
 4. **Formats Nicely** - Shows file paths, sizes, and change types with emojis:
    - 📦 New Files (green)
    - ✏️ Modified Files (yellow)
    - 🗑️ Files Deleted (red)
+
+## Configuration Options
+
+The `monitoring` section in `config.json` has these options:
+
+```json
+"monitoring": {
+  "interval_minutes": 30,           // How often to check (def: 30)
+  "ignore_dirs": [...],              // Directories to skip
+  "exclude_patterns": [...],         // File patterns to ignore
+  "track_modifications": false,      // Notify on file changes (def: false)
+  "track_deletions": true            // Notify on file deletion (def: true)
+}
+```
+
+### Disable Modification Spam
+
+If you're getting flooded with "Files Modified" notifications for files you aren't actually uploading:
+
+```json
+"track_modifications": false
+```
+
+This disables notifications for file modifications and only alerts you about newly uploaded files. The script will still track modifications internally for comparison purposes.
+
+### Disable Deletion Notifications
+
+If you don't want notifications when files are deleted:
+
+```json
+"track_deletions": false
+```
 
 ## Database
 

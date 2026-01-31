@@ -389,13 +389,17 @@ class FileMonitor:
                  discord_webhook: str,
                  db_path: str = "file_tracker.db",
                  ignore_dirs: Optional[List[str]] = None,
-                 exclude_patterns: Optional[List[str]] = None):
+                 exclude_patterns: Optional[List[str]] = None,
+                 track_modifications: bool = False,
+                 track_deletions: bool = True):
         
         self.fb_client = FileBrowserClient(fb_url, fb_username, fb_password)
         self.discord = DiscordNotifier(discord_webhook)
         self.db = FileTrackerDB(db_path)
         self.ignore_dirs = ignore_dirs or []
         self.exclude_patterns = exclude_patterns or []
+        self.track_modifications = track_modifications
+        self.track_deletions = track_deletions
         self.last_run = None
     
     def monitor(self):
@@ -455,28 +459,30 @@ class FileMonitor:
                     })
                     logger.info(f"New file detected: {file_path}")
             else:
-                # Existing file - check if modified
-                previous_file = previous_dict[file_path]
-                if current_file.mod_time > previous_file.mod_time and current_file.mod_time >= detection_time:
-                    changes["modified"].append({
-                        "path": file_path,
-                        "size": current_file.size,
-                        "name": current_file.name
-                    })
-                    logger.info(f"Modified file detected: {file_path}")
+                # Existing file - check if modified (only if tracking is enabled)
+                if self.track_modifications:
+                    previous_file = previous_dict[file_path]
+                    if current_file.mod_time > previous_file.mod_time and current_file.mod_time >= detection_time:
+                        changes["modified"].append({
+                            "path": file_path,
+                            "size": current_file.size,
+                            "name": current_file.name
+                        })
+                        logger.info(f"Modified file detected: {file_path}")
         
-        # Check for deleted files (only if not first run)
-        for file_path, previous_file in previous_dict.items():
-            if file_path not in current_dict and not previous_file.is_dir:
-                # Only report deletions if the file was checked relatively recently
-                # This prevents reporting deletions of files that disappeared before we started
-                if self.last_run and (current_time - previous_file.mod_time) < (self.last_run + 3600):
-                    changes["deleted"].append({
-                        "path": file_path,
-                        "size": previous_file.size,
-                        "name": previous_file.name
-                    })
-                    logger.info(f"Deleted file detected: {file_path}")
+        # Check for deleted files (only if tracking is enabled)
+        if self.track_deletions:
+            for file_path, previous_file in previous_dict.items():
+                if file_path not in current_dict and not previous_file.is_dir:
+                    # Only report deletions if the file was checked relatively recently
+                    # This prevents reporting deletions of files that disappeared before we started
+                    if self.last_run and (current_time - previous_file.mod_time) < (self.last_run + 3600):
+                        changes["deleted"].append({
+                            "path": file_path,
+                            "size": previous_file.size,
+                            "name": previous_file.name
+                        })
+                        logger.info(f"Deleted file detected: {file_path}")
         
         # Update database with current files
         for file_record in current_files:
@@ -594,7 +600,9 @@ def main():
         fb_password=fb_config['password'],
         discord_webhook=discord_config['webhook_url'],
         ignore_dirs=monitor_config.get('ignore_dirs', []),
-        exclude_patterns=monitor_config.get('exclude_patterns', [])
+        exclude_patterns=monitor_config.get('exclude_patterns', []),
+        track_modifications=monitor_config.get('track_modifications', False),
+        track_deletions=monitor_config.get('track_deletions', True)
     )
     
     interval = monitor_config.get('interval_minutes', 30) * 60

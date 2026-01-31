@@ -20,6 +20,8 @@
       ".cache",
       ".swp",
       "~"
-    ]
+    ],
+    "track_modifications": false,
+    "track_deletions": true
   }
 }
