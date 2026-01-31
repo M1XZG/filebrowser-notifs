@@ -1,0 +1,25 @@
+{
+  "filebrowser": {
+    "url": "http://localhost:8080",
+    "username": "admin",
+    "password": "admin"
+  },
+  "discord": {
+    "webhook_url": "https://discordapp.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN"
+  },
+  "monitoring": {
+    "interval_minutes": 30,
+    "ignore_dirs": [
+      ".git",
+      "__pycache__",
+      "node_modules",
+      ".venv"
+    ],
+    "exclude_patterns": [
+      ".tmp",
+      ".cache",
+      ".swp",
+      "~"
+    ]
+  }
+}

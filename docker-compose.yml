@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  filebrowser-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: filebrowser-monitor
+    restart: unless-stopped
+    volumes:
+      # Mount config and database
+      - ./config.json:/app/config.json:ro
+      - monitor-db:/app
+    environment:
+      - TZ=UTC
+    networks:
+      - filebrowser-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  filebrowser-net:
+    external: true
+    # If network doesn't exist, comment out external and it will be created
+
+volumes:
+  monitor-db:
+    driver: local

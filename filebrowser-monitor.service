@@ -1,0 +1,23 @@
+[Unit]
+Description=FileBrowser File Monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=filebrowser
+WorkingDirectory=/opt/filebrowser-notifs
+ExecStart=/usr/bin/python3 /opt/filebrowser-notifs/monitor.py
+Restart=on-failure
+RestartSec=60
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=filebrowser-monitor
+
+# Environment
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+
+[Install]
+WantedBy=multi-user.target
