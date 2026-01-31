@@ -141,15 +141,22 @@ class FileBrowserClient:
             response = self.session.post(url, json=payload, timeout=10)
             response.raise_for_status()
             
-            # Check if response is JSON
+            # Check if response is JSON or plain text token
             content_type = response.headers.get('content-type', '')
-            if 'application/json' not in content_type:
-                logger.error(f"FileBrowser returned non-JSON response. Content-Type: {content_type}")
-                logger.error(f"Response text (first 200 chars): {response.text[:200]}")
-                raise ValueError(f"Expected JSON response but got {content_type}. Is FileBrowser running at {self.base_url}?")
             
-            data = response.json()
-            self.token = data.get('token')
+            if 'application/json' in content_type:
+                # Standard JSON response with {"token": "..."}
+                data = response.json()
+                self.token = data.get('token')
+            elif 'text/plain' in content_type:
+                # Some FileBrowser versions return token directly as plain text
+                self.token = response.text.strip()
+                logger.info("Received token as plain text (older FileBrowser format)")
+            else:
+                logger.error(f"FileBrowser returned unexpected content type: {content_type}")
+                logger.error(f"Response text (first 200 chars): {response.text[:200]}")
+                raise ValueError(f"Expected JSON or text response but got {content_type}. Is FileBrowser running at {self.base_url}?")
+            
             if not self.token:
                 raise ValueError("No token received from authentication")
             logger.info("Successfully authenticated with FileBrowser")
