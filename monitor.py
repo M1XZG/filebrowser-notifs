@@ -180,7 +180,7 @@ class FileBrowserClient:
     def _fetch_directory(self, path: str, files: List[FileRecord]):
         """Recursively fetch directory contents"""
         url = f"{self.base_url}/api/resources{path}"
-        headers = {"X-Auth-Token": self.token}
+        headers = {"X-Auth": self.token}
         
         try:
             response = self.session.get(url, headers=headers)
