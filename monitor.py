@@ -265,7 +265,11 @@ class DiscordNotifier:
         # Format file list
         file_lines = []
         total_size = 0
-        for # Truncate very long paths
+        for file_info in files:
+            path = file_info.get('path', 'unknown')
+            size = file_info.get('size', 0)
+            
+            # Truncate very long paths
             if len(path) > 100:
                 path = path[:47] + '...' + path[-50:]
             
