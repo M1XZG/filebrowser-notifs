@@ -117,6 +117,13 @@ class FileTrackerDB:
                 VALUES (?, ?, ?)
             ''', (file_path, current_time, change_type))
             conn.commit()
+    
+    def remove_file(self, path: str):
+        """Remove a file record from the database"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM files WHERE path = ?', (path,))
+            conn.commit()
 
 
 class FileBrowserClient:
@@ -483,6 +490,9 @@ class FileMonitor:
                             "name": previous_file.name
                         })
                         logger.info(f"Deleted file detected: {file_path}")
+                    # Remove the deleted file from the database to prevent duplicate notifications
+                    self.db.remove_file(file_path)
+                    logger.debug(f"Removed deleted file from database: {file_path}")
         
         # Update database with current files
         for file_record in current_files:
