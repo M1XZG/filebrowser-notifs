@@ -15,26 +15,39 @@ git clone https://github.com/yourusername/filebrowser-notifs.git
 cd filebrowser-notifs
 ```
 
-## 2. Install Dependencies
+## 2. Set Up Virtual Environment (Recommended)
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On Linux/macOS:
+source venv/bin/activate
+```
+
+## 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 3. Get Discord Webhook
+## 4. Get Discord Webhook
 
 1. Open Discord → Server → Settings → Integrations → Webhooks
 2. New Webhook → Give it a name like "FileBrowser Monitor"
 3. Copy the webhook URL
 4. Keep it safe!
 
-## 4. Initialize Config
+## 5. Initialize Config
 
 ```bash
 python monitor.py --init-config
 ```
 
-## 5. Edit config.json
+## 6. Edit config.json
 
 ```bash
 # On Windows
@@ -50,7 +63,7 @@ Fill in:
 - `filebrowser.password` - Admin password
 - `discord.webhook_url` - The Discord webhook URL from step 3
 
-## 6. Test It
+## 7. Test It
 
 ```bash
 python monitor.py --once
@@ -61,7 +74,7 @@ You should see:
 2. Files being scanned
 3. A Discord notification appears
 
-## 7. Set Up Scheduling
+## 8. Set Up Scheduling
 
 ### Option A: Windows (Easiest)
 
