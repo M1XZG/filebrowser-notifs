@@ -298,7 +298,7 @@ class DiscordNotifier:
             "footer": {
                 "text": f"Total: {len(files)} file(s) | {self._format_size(total_size)}"
             },
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.000Z')
         }
         
         return embed
@@ -346,6 +346,7 @@ class DiscordNotifier:
                     try:
                         error_detail = e.response.json()
                         logger.error(f"Discord error details: {error_detail}")
+                        logger.error(f"Payload sent: {json.dumps(data, indent=2)[:500]}...")
                     except:
                         pass
                     return  # Don't retry on 400 errors
