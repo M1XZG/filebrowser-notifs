@@ -30,8 +30,23 @@ source venv/bin/activate
 
 ## 3. Install Dependencies
 
+**Important:** Make sure your virtual environment is activated (you should see `(venv)` in your prompt).
+
 ```bash
-pip install -r requirements.txt
+# Use python -m pip to ensure it installs to the venv
+python -m pip install -r requirements.txt
+```
+
+**Troubleshooting:** If you see "Defaulting to user installation" or later get "ModuleNotFoundError", try:
+```bash
+# Deactivate and reactivate the virtual environment
+deactivate
+source venv/bin/activate  # Linux/macOS
+# OR
+venv\Scripts\activate     # Windows
+
+# Then install again
+python -m pip install -r requirements.txt
 ```
 
 ## 4. Get Discord Webhook
@@ -42,6 +57,8 @@ pip install -r requirements.txt
 4. Keep it safe!
 
 ## 5. Initialize Config
+
+**Note:** Ensure your virtual environment is still activated.
 
 ```bash
 python monitor.py --init-config
@@ -62,6 +79,8 @@ Fill in:
 - `filebrowser.username` - Admin username
 - `filebrowser.password` - Admin password
 - `discord.webhook_url` - The Discord webhook URL from step 3
+
+**Note:** Ensure your virtual environment is still activated.
 
 ## 7. Test It
 
@@ -123,14 +142,19 @@ FileBrowser Monitor is now running and will check every 30 minutes for new files
 
 ## Troubleshooting
 
-**"Connection refused"**
-- Check FileBrowser is running: `curl http://localhost:8080/api/status`
-- Verify URL in config.json
+**"Connection refused" or "Cannot connect to FileBrowser"**
+- Check FileBrowser is running: `curl http://localhost:8080/api/login` (should NOT return "Connection refused")
+- Verify URL in config.json (include http:// or https://, no trailing slash)
+- If using Docker, ensure the container is running: `docker ps | grep filebrowser`
+- Try accessing FileBrowser in your web browser first
 
-**"Authentication failed"**
+**"Authentication failed" or "Expected JSON response"**
+- Verify the URL is correct and points to FileBrowser (not a random webpage)
 - Check credentials in config.json
 - Verify user is admin in FileBrowser
-- Try logging into FileBrowser web UI manually
+- Try logging into FileBrowser web UI manually with same credentials
+- Ensure FileBrowser version is v2.0 or higher
+- Check if FileBrowser is behind a reverse proxy that might be interfering
 
 **"Invalid webhook URL"**
 - Copy webhook URL again from Discord
@@ -140,6 +164,11 @@ FileBrowser Monitor is now running and will check every 30 minutes for new files
 - Run `python monitor.py --once` to test
 - Check Discord channel permissions
 - Verify webhook URL is in config.json
+
+**"ModuleNotFoundError: No module named 'requests'" (even with venv active)**
+- Deactivate and reactivate venv: `deactivate && source venv/bin/activate`
+- Install using: `python -m pip install -r requirements.txt`
+- Verify correct Python: `which python` should point to venv/bin/python
 
 ## Support
 

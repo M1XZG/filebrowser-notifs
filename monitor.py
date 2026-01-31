@@ -138,13 +138,28 @@ class FileBrowserClient:
             "password": self.password
         }
         try:
-            response = self.session.post(url, json=payload)
+            response = self.session.post(url, json=payload, timeout=10)
             response.raise_for_status()
+            
+            # Check if response is JSON
+            content_type = response.headers.get('content-type', '')
+            if 'application/json' not in content_type:
+                logger.error(f"FileBrowser returned non-JSON response. Content-Type: {content_type}")
+                logger.error(f"Response text (first 200 chars): {response.text[:200]}")
+                raise ValueError(f"Expected JSON response but got {content_type}. Is FileBrowser running at {self.base_url}?")
+            
             data = response.json()
             self.token = data.get('token')
             if not self.token:
                 raise ValueError("No token received from authentication")
             logger.info("Successfully authenticated with FileBrowser")
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Cannot connect to FileBrowser at {self.base_url}")
+            logger.error(f"Please ensure FileBrowser is running and the URL is correct")
+            raise
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Connection to FileBrowser at {self.base_url} timed out")
+            raise
         except Exception as e:
             logger.error(f"Authentication failed: {e}")
             raise
