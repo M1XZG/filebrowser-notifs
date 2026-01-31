@@ -222,6 +222,7 @@ class DiscordNotifier:
     def __init__(self, webhook_url: str):
         self.webhook_url = webhook_url
         self.session = requests.Session()
+        self.last_send_time = 0
     
     def send_notification(self, changes: Dict[str, List[Dict]]):
         """Send formatted notification to Discord"""
@@ -236,12 +237,15 @@ class DiscordNotifier:
                 continue
             
             # Create chunks of files (Discord has limits)
-            for chunk in self._chunk_files(files, 15):
+            for chunk in self._chunk_files(files, 10):  # Reduced from 15 to 10 to avoid description length issues
                 embed = self._create_embed(change_type, chunk)
                 embeds.append(embed)
         
-        # Send embeds in chunks (max 10 per message)
-        for embed_chunk in self._chunk_embeds(embeds, 10):
+        # Send embeds in chunks (max 10 per message) with rate limiting
+        for i, embed_chunk in enumerate(self._chunk_embeds(embeds, 10)):
+            if i > 0:
+                # Rate limit: wait at least 1 second between sends
+                time.sleep(1)
             self._send_webhook({"embeds": embed_chunk})
     
     def _create_embed(self, change_type: str, files: List[Dict]) -> Dict:
@@ -261,9 +265,9 @@ class DiscordNotifier:
         # Format file list
         file_lines = []
         total_size = 0
-        for file_info in files:
-            path = file_info.get('path', 'unknown')
-            size = file_info.get('size', 0)
+        for # Truncate very long paths
+            if len(path) > 100:
+                path = path[:47] + '...' + path[-50:]
             
             if size > 0:
                 size_str = self._format_size(size)
@@ -272,12 +276,25 @@ class DiscordNotifier:
             else:
                 file_lines.append(f"`{path}`")
         
-        description = "\n".join(file_lines[:15])  # Limit to 15 files per embed
+        description = "\n".join(file_lines[:10])  # Limit to 10 files per embed
+        
+        # Ensure description doesn't exceed Discord's 4096 char limit
+        if len(description) > 4000:
+            description = description[:3997] + "..."
+        
+        # Add "and X more..." if there are more files
+        remaining = len(files) - 10
+        if remaining > 0:
+            description += f"\n\n...and {remaining} more file(s)"
         
         embed = {
             "title": title_map.get(change_type, "Files Changed"),
             "description": description,
             "color": colors.get(change_type, 0x808080),
+            "footer": {
+                "text": f"Total: {len(files)} file(s) | {self._format_size(total_size)}"
+            },
+            "timestamp": datetime.utcnow().isoformat()color": colors.get(change_type, 0x808080),
             "footer": {
                 "text": f"Total: {len(files)} file(s) | {self._format_size(total_size)}",
                 "timestamp": datetime.utcnow().isoformat()
@@ -293,13 +310,46 @@ class DiscordNotifier:
             if size < 1024:
                 return f"{size:.1f} {unit}"
             size /= 1024
-        return f"{size:.1f} TB"
-    
-    @staticmethod
-    def _chunk_files(files: List[Dict], chunk_size: int) -> List[List[Dict]]:
-        """Split files into chunks"""
-        return [files[i:i + chunk_size] for i in range(0, len(files), chunk_size)]
-    
+        return f"{size:.1f} TB" with retry logic"""
+        max_retries = 3
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                response = self.session.post(self.webhook_url, json=data, timeout=10)
+                response.raise_for_status()
+                logger.info("Notification sent to Discord")
+                return
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 429:
+                    # Rate limited - wait and retry
+                    retry_after = int(e.response.headers.get('Retry-After', retry_delay))
+                    logger.warning(f"Discord rate limit hit. Waiting {retry_after}s before retry...")
+                    time.sleep(retry_after)
+                    retry_delay *= 2  # Exponential backoff
+                elif e.response.status_code == 400:
+                    # Bad request - log details and don't retry
+                    logger.error(f"Discord rejected the request (400): {e}")
+                    try:
+                        error_detail = e.response.json()
+                        logger.error(f"Discord error details: {error_detail}")
+                    except:
+                        pass
+                    return  # Don't retry on 400 errors
+                else:
+                    logger.error(f"Failed to send Discord notification: {e}")
+                    if attempt < max_retries - 1:
+                        time.sleep(retry_delay)
+                        retry_delay *= 2
+                    else:
+                        return
+            except Exception as e:
+                logger.error(f"Failed to send Discord notification: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    return
     @staticmethod
     def _chunk_embeds(embeds: List[Dict], chunk_size: int) -> List[List[Dict]]:
         """Split embeds into chunks"""
